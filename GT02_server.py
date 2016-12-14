@@ -1,6 +1,7 @@
 from flask import Flask
 import requests
 import json
+import keys
 from py_bing_search import PyBingWebSearch
 from fuzzywuzzy import fuzz, process
 import suffixes as suffixes
@@ -9,8 +10,8 @@ import suffixes as suffixes
 ### Configuration
 ##################
 
-clearbit_key = 'sk_885bdf7352ae3c6a36b9b3266072c184'
-bing_key = 'CU79dfqZfHOL0dYHwo8RLkN60TRl4Vf8FQhoVj//Dt0'
+clearbit_key = keys.clearbit_key
+bing_key = keys.bing_key
 
 
 #######################################
@@ -96,5 +97,5 @@ def autocomplete(company):
 		return
 
 
-
+autocomplete('espn')
 
