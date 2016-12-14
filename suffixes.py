@@ -1,0 +1,20 @@
+
+suffixes = {
+"corporation":"corporation",
+"company":"company",
+"incorporated":"incorporated",
+"limited":"limited",
+"co.":"co.",
+"ltd.":"ltd.",
+"corp.":"corp.",
+"inc.":"inc.",
+"limited partnership":"limited partnership",
+"limited liability company": "limited liability company", 
+"limited company":"limited company",
+"lc":"lc",
+"registered limited liability partnership":"registered limited liability partnership",
+"llp":"llp",
+"professional service corporation":"professional service corporation",
+"psc":"psc",
+"pllc":"pllc",
+"plc.":"plc."}
