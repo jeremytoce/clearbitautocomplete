@@ -10,8 +10,13 @@ import suffixes as suffixes
 ### Configuration
 ##################
 
+<<<<<<< HEAD
 clearbit_key = keys.clearbit_key
 bing_key = keys.bing_key
+=======
+clearbit_key = ''
+bing_key = ''
+>>>>>>> 06f861c14a94bced174d5eb2ac7fb0023c3ea74e
 
 
 #######################################
