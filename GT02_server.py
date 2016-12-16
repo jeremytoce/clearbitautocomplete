@@ -2,13 +2,18 @@ from flask import Flask
 import requests
 import json
 import keys
+import suffixes
+import jsonify
 from py_bing_search import PyBingWebSearch
 from fuzzywuzzy import fuzz, process
-import suffixes as suffixes
+
 
 ##################
 ### Configuration
 ##################
+
+from flask import Flask
+app = Flask(__name__) 
 
 clearbit_key = keys.clearbit_key
 bing_key = keys.bing_key
@@ -75,26 +80,46 @@ def fuzzyMatch(company):
 
 
 #################################
+### Helper Functions
+#################################
+
+def output(company, result):
+	return json.dumps({'domain': result, 'score': str(fuzz.partial_ratio(company, result))})
+
+def selector(company, f):
+	r = f(company)
+	if r != None:
+		return output(company, r)
+	return json.dumps({'domain': None})
+
+
+#################################
 ### Endpoint WIP
 #################################
 
-def autocomplete(company):
+@app.route('/domainlookup/all/<company>', methods=['GET'])
+def autocompleteAll(company):
 
 	r = autocompleteOld(company)
 	if r != None:
-		print ('old: ' + str(r))
-		return
-
+		return output(company, r)
 	r = fuzzyMatch(company)
 	if r:
-		print (r)
-		return
-		
+		return output(company, r)
 	r = autocompleteNew(company)
 	if r != None:
-		print ('new: ' + str(r))
-		return
+		return output(company, r)
+	return json.dumps({'domain': None})
+	
 
+@app.route('/domainlookup/old/<company>', methods=['GET'])
+def domainLookupOld(company):
+	return selector(company, autocompleteOld)
 
-autocomplete('espn')
+@app.route('/domainlookup/new/<company>', methods=['GET'])
+def domainLookupNew(company):
+	return selector(company, autocompleteNew)
 
+@app.route('/domainlookup/fuzzymatch/<company>', methods=['GET'])
+def domainLookupFuzzy(company):
+	return selector(company, fuzzyMatch)
