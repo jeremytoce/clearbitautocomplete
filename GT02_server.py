@@ -6,14 +6,15 @@ import suffixes
 import jsonify
 from py_bing_search import PyBingWebSearch
 from fuzzywuzzy import fuzz, process
+from flask_restful import Resource, Api
 
 
 ##################
 ### Configuration
 ##################
 
-from flask import Flask
 app = Flask(__name__) 
+api = Api(app)
 
 clearbit_key = keys.clearbit_key
 bing_key = keys.bing_key
@@ -84,42 +85,45 @@ def fuzzyMatch(company):
 #################################
 
 def output(company, result):
-	return json.dumps({'domain': result, 'score': str(fuzz.partial_ratio(company, result))})
+	return ({'domain': result, 'score': str(fuzz.partial_ratio(company, result))})
 
 def selector(company, f):
 	r = f(company)
 	if r != None:
 		return output(company, r)
-	return json.dumps({'domain': None})
+	return ({'domain': None})
 
 
 #################################
 ### Endpoint WIP
 #################################
 
-@app.route('/domainlookup/all/<company>', methods=['GET'])
-def autocompleteAll(company):
+class Old(Resource):
+    def get(self, company):
+    	return selector(company, autocompleteOld)
 
-	r = autocompleteOld(company)
-	if r != None:
-		return output(company, r)
-	r = fuzzyMatch(company)
-	if r:
-		return output(company, r)
-	r = autocompleteNew(company)
-	if r != None:
-		return output(company, r)
-	return json.dumps({'domain': None})
-	
+class New(Resource):
+    def get(self, company):
+    	return selector(company, autocompleteNew)
 
-@app.route('/domainlookup/old/<company>', methods=['GET'])
-def domainLookupOld(company):
-	return selector(company, autocompleteOld)
+class Fuzzy(Resource):
+    def get(self, company):
+    	return selector(company, fuzzyMatch)
 
-@app.route('/domainlookup/new/<company>', methods=['GET'])
-def domainLookupNew(company):
-	return selector(company, autocompleteNew)
+class All(Resource):
+    def get(self, company):
+    	r = autocompleteOld(company)
+    	if r != None:
+    		return output(company, r)
+    	r = fuzzyMatch(company)
+    	if r:
+    		return output(company, r)
+    	r = autocompleteNew(company)
+    	if r != None:
+    		return output(company, r)
+    	return json.dumps({'domain': None})
 
-@app.route('/domainlookup/fuzzymatch/<company>', methods=['GET'])
-def domainLookupFuzzy(company):
-	return selector(company, fuzzyMatch)
+api.add_resource(Old, '/domainlookup/old/<string:company>')
+api.add_resource(New, '/domainlookup/new/<string:company>')
+api.add_resource(Fuzzy, '/domainlookup/fuzzymatch/<string:company>')
+api.add_resource(All, '/domainlookup/all/<string:company>')
