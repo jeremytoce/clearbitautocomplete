@@ -3,7 +3,6 @@ import requests
 import json
 import keys
 import suffixes
-import jsonify
 from py_bing_search import PyBingWebSearch
 from fuzzywuzzy import fuzz, process
 from flask_restful import Resource, Api
@@ -27,7 +26,7 @@ def autocompleteNew(company):
 
 	r = requests.get('https://company.clearbit.com/v1/domains/find?name='+company, auth=(clearbit_key, ''))
 	if (len(r.json()) > 0):
-		return (r.json())
+		return (r.json()['domain'])
 	else: 
 		return None
 
@@ -47,7 +46,7 @@ def autocompleteOld(company):
 ### Bing Search w/ Fuzzy Matching
 #################################
 
-def fuzzyMatch(company):
+def autocompleteFuzzy(company):
 
 	search_term = str.lower(company).split(' ')
 
@@ -62,14 +61,13 @@ def fuzzyMatch(company):
 	flag = False
 	i = 0
 
-	while (i < 25):
+	while (i <= 25):
 		try:
 			rawURL = r[i].url
 			if ('https://' in rawURL):
 				modURL = rawURL.replace('https://','').split('/')
 			if ('http://' in rawURL):
 				modURL = rawURL.replace('http://','').split('/')
-			print('comparing ' + modURL[0] + ' and ' + companyScrubbed + ': ' + str(fuzz.partial_ratio(modURL[0], companyScrubbed)))
 			if (fuzz.partial_ratio(modURL[0], companyScrubbed) < 50):
 				i+=1		
 			else:
@@ -91,7 +89,7 @@ def selector(company, f):
 	r = f(company)
 	if r != None:
 		return output(company, r)
-	return ({'domain': None})
+	return ({'domain': None, 'score': 0})
 
 
 #################################
@@ -108,22 +106,24 @@ class New(Resource):
 
 class Fuzzy(Resource):
     def get(self, company):
-    	return selector(company, fuzzyMatch)
+    	return selector(company, autocompleteFuzzy)
 
 class All(Resource):
     def get(self, company):
     	r = autocompleteOld(company)
     	if r != None:
     		return output(company, r)
-    	r = fuzzyMatch(company)
+    	r = autocompleteFuzzy(company)
     	if r:
     		return output(company, r)
     	r = autocompleteNew(company)
     	if r != None:
     		return output(company, r)
-    	return json.dumps({'domain': None})
+    	return  ({'domain': None})
 
 api.add_resource(Old, '/domainlookup/old/<string:company>')
 api.add_resource(New, '/domainlookup/new/<string:company>')
-api.add_resource(Fuzzy, '/domainlookup/fuzzymatch/<string:company>')
+api.add_resource(Fuzzy, '/domainlookup/fuzzy/<string:company>')
 api.add_resource(All, '/domainlookup/all/<string:company>')
+
+app.run(debug=True)
