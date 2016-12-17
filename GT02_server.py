@@ -5,8 +5,8 @@ import keys
 import suffixes
 from py_bing_search import PyBingWebSearch
 from fuzzywuzzy import fuzz, process
-from flask_restful import Resource, Api
-
+from flask_restful import Resource, Api, reqparse
+from parse import *
 
 ##################
 ### Configuration
@@ -16,7 +16,7 @@ app = Flask(__name__)
 api = Api(app)
 
 clearbit_key = keys.clearbit_key
-bing_key = keys.bing_key
+bing_key = keys.bing_key 
 
 #######################################
 ### New Clearbit Autocomplete Endpoint
@@ -77,13 +77,12 @@ def autocompleteFuzzy(company):
 			return (None)
 	return (None)
 
-
 #################################
 ### Helper Functions
 #################################
 
 def output(company, result):
-	return ({'domain': result, 'score': str(fuzz.partial_ratio(company, result))})
+	return ({'domain': result, 'score': str(fuzz.partial_ratio(urlClean(result), company))})
 
 def selector(company, f):
 	r = f(company)
@@ -91,6 +90,29 @@ def selector(company, f):
 		return output(company, r)
 	return ({'domain': None, 'score': 0})
 
+def argCleaner(company): ## refactor to regex
+	for char in company:
+		if (char == '['):
+			company = company.replace('[','')
+		if (char == ']'):
+			company = company.replace(']','')
+		if (char == ','):
+			company = company.replace(',','')
+		if (char == '\''):
+			company = company.replace('\'','')	
+	if (' ' in company):
+		company = company.replace(' ','')
+	if ('/' in company):
+		company = company.replace('/', '')
+		
+	return str.lower(company)
+
+def urlClean(url):
+	if ('www.' in url):
+		url = (url.replace('www.', ''))
+	sep = '.'
+	url = url.split(sep, 1)[0]
+	return str.lower(url)
 
 #################################
 ### Endpoint WIP
@@ -98,27 +120,31 @@ def selector(company, f):
 
 class Old(Resource):
     def get(self, company):
-    	return selector(company, autocompleteOld)
+    	try:
+    		return selector(argCleaner(company), autocompleteOld)
+    	except: 
+    		return
 
 class New(Resource):
     def get(self, company):
-    	return selector(company, autocompleteNew)
+    	return selector(argCleaner(company), autocompleteNew)
 
 class Fuzzy(Resource):
-    def get(self, company):
-    	return selector(company, autocompleteFuzzy)
+    def get(self, company):	
+    	return selector(argCleaner(company), autocompleteFuzzy)
 
 class All(Resource):
     def get(self, company):
-    	r = autocompleteOld(company)
+    	cleanedCompany = argCleaner(company)
+    	r = autocompleteOld(cleanedCompany)
     	if r != None:
-    		return output(company, r)
-    	r = autocompleteFuzzy(company)
+    		return output(cleanedCompany, r)
+    	r = autocompleteFuzzy(cleanedCompany)
     	if r:
-    		return output(company, r)
-    	r = autocompleteNew(company)
+    		return output(cleanedCompany, r)
+    	r = autocompleteNew(cleanedCompany)
     	if r != None:
-    		return output(company, r)
+    		return output(cleanedCompany, r)
     	return  ({'domain': None})
 
 api.add_resource(Old, '/domainlookup/old/<string:company>')
