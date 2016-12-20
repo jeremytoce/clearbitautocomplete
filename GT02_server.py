@@ -107,7 +107,7 @@ def argCleaner(company): ## refactor to regex
 		
 	return str.lower(company)
 
-def urlClean(url):
+def urlCleaner(url):
 	if ('www.' in url):
 		url = (url.replace('www.', ''))
 	sep = '.'
