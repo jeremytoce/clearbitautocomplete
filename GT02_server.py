@@ -232,3 +232,12 @@ api.add_resource(Cognitive, '/domainlookup/cognitive/<string:company>')
 
 port = int(os.environ.get('PORT', 5000))
 app.run(host='0.0.0.0', port=port, debug=True)
+
+#################################
+### TO DO
+#################################
+
+### Refactor 
+### Clean domain prefixes
+### Build feature to detect if fuzzy matches are in Clearbit database
+### Use fuzzy matching score on old and new endpoints 
