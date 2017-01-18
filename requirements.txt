@@ -1,0 +1,6 @@
+flask==0.11.1
+requests==2.11.1
+py_bing_search==0.2.6
+fuzzywuzzy==0.14.0
+flask_restful==0.3.5
+parse==1.6.6
