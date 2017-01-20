@@ -19,18 +19,6 @@ api = Api(app)
 clearbit_key = keys.clearbit_key
 bing_key = keys.bing_key 
 
-#######################################
-### New Clearbit Autocomplete Endpoint
-#######################################
-
-def autocompleteNew(company):
-
-	r = requests.get('https://company.clearbit.com/v1/domains/find?name='+company_scrub(company), auth=(clearbit_key, ''))
-	if (len(r.json()) > 0):
-		return (r.json()['domain'])
-	else: 
-		return None
-
 ######################################
 ### Old Clearbit Autocomplete Endpoint
 ######################################
@@ -44,41 +32,17 @@ def autocompleteOld(company):
 	else: 
 		return None
 
-#################################
-### Bing Search w/ Fuzzy Matching
-### DEPRECATE
-#################################
+#######################################
+### New Clearbit Autocomplete Endpoint
+#######################################
 
-def autocompleteFuzzy(company):
+def autocompleteNew(company):
 
-	search_term = str(company.lower()).split(' ')
-
-	for word in search_term: 
-		if word in suffixes.suffixes:
-			search_term.remove(word)
-
-	companyScrubbed = ' '.join(search_term)
-
-	bing_web = PyBingWebSearch(bing_key, companyScrubbed, web_only=False) 
-	r = bing_web.search(limit=25, format='json')
-	flag = False
-	i = 0
-
-	while (i <= 25):
-		try:
-			rawURL = r[i].url
-			if ('https://' in rawURL):
-				modURL = rawURL.replace('https://','').split('/')
-			if ('http://' in rawURL):
-				modURL = rawURL.replace('http://','').split('/')
-			if (fuzz.partial_ratio(modURL[0], companyScrubbed) < 50):
-				i+=1		
-			else:
-				return (modURL[0])
-				break
-		except:
-			return (None)
-	return (None)
+	r = requests.get('https://company.clearbit.com/v1/domains/find?name='+company_scrub(company), auth=(clearbit_key, ''))
+	if (len(r.json()) > 0):
+		return (r.json()['domain'])
+	else: 
+		return None
 
 #################################
 ### Bing Search w/ Fuzzy Matching
@@ -87,9 +51,9 @@ def autocompleteFuzzy(company):
 def autocomplete_fuzzy_cog(company):
 
 	i = 0
-	headers = {'Ocp-Apim-Subscription-Key':'7cbff62212f34854a526ba73583773e0'}
+	headers = {'Ocp-Apim-Subscription-Key':bing_key}
 	company_scrubbed = company_scrub(company)
-	url = 'https://api.cognitive.microsoft.com/bing/v5.0/search?q='+company+'&count=25&offset=0&mkt=en-us&safesearch=Moderate'
+	url = 'https://api.cognitive.microsoft.com/bing/v5.0/search?q='+company+'&count=15&offset=0&mkt=en-us&safesearch=Moderate'
 	r = requests.get(url, headers=headers)
 	result = (r.json())
 
@@ -113,8 +77,8 @@ def autocomplete_fuzzy_cog(company):
 				return (modURL[0])
 				break
 		except Exception as e:
-			print(e)
 			return (None)
+			
 	return (None)
 
 #################################
@@ -127,7 +91,7 @@ def lower(string):
 def output(company, result, source):
 	return ({'company': company, 'domain': http_cleaner(result), 'score': str(fuzz.partial_ratio(urlCleaner(result), company)), 'source': source})
 
-def selector(company, f):
+def selector(company, f, source):
 	r = f(company)
 	if r != None:
 		return output(company, r, source)
@@ -143,8 +107,6 @@ def argCleaner(company): ## refactor to regex
 			company = company.replace(',','')
 		if (char == '\''):
 			company = company.replace('\'','')	
-	# if (' ' in company):
-	# 	company = company.replace(' ','')
 	if ('/' in company):
 		company = company.replace('/', '')
 		
@@ -169,8 +131,6 @@ def http_cleaner(url):
 def company_scrub(company):
 	search_term = lower(str(company)).split(' ')
 
-	print ('search term: ' + str(search_term), company)
-
 	for word in search_term: 
 		if word in suffixes.suffixes:
 			search_term.remove(word)
@@ -187,19 +147,23 @@ class Old(Resource):
     def get(self, company):
     	try:
     		return selector(argCleaner(company), autocompleteOld, 'old')
-    	except: 
-    		return ()
+    	except Exception as e: 
+    		print (e)
+    		return ({'company': company, 'domain': None})
 
 class New(Resource):
     def get(self, company):
     	try:
     		return selector(argCleaner(company), autocompleteNew, 'new')
     	except: 
-    		return
+    		return ({'company': company, 'domain': None})
 
-class Fuzzy(Resource):
-    def get(self, company):	
-    	return selector(argCleaner(company), autocompleteFuzzy, 'fuzzy')
+class Cognitive(Resource):
+	def get(self, company):
+		try:
+			return selector(argCleaner(company), autocomplete_fuzzy_cog, 'cognitive')
+		except: 
+			return ({'company': company, 'domain': None})
 
 class All(Resource):
     def get(self, company):
@@ -226,16 +190,11 @@ class Clearbit(Resource):
 			return output(cleanedCompany, r)
 		return  ({'domain': None})
 
-class Cognitive(Resource):
-	def get(self, company):
-		return selector(argCleaner(company), autocomplete_fuzzy_cog, 'cognitive')
-
 api.add_resource(Old, '/domainlookup/old/<string:company>')
 api.add_resource(New, '/domainlookup/new/<string:company>')
-api.add_resource(Fuzzy, '/domainlookup/fuzzy/<string:company>')
+api.add_resource(Cognitive, '/domainlookup/cognitive/<string:company>')
 api.add_resource(All, '/domainlookup/all/<string:company>')
 api.add_resource(Clearbit, '/domainlookup/clearbit/<string:company>')
-api.add_resource(Cognitive, '/domainlookup/cognitive/<string:company>')
 
 port = int(os.environ.get('PORT', 5000))
 app.run(host='0.0.0.0', debug=True)
